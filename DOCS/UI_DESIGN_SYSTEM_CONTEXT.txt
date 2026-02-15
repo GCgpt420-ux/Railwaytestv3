@@ -1,0 +1,137 @@
+```plaintext
+Contexto Frontend (resumen)
+
+- Repo frontend raíz: tutor-paes-frontend
+- Tecnologías: Next.js (App Router), React 19, TypeScript, TailwindCSS, Vitest
+- Objetivo del Sistema de Diseño: centralizar primitivas, exponer tokens en tiempo de ejecución, crear historias (Storybook), añadir pruebas y migrar componentes de features a una librería interna reutilizable.
+
+Árbol de archivos propuesto para el Sistema de Diseño
+
+tutor-paes-frontend/
+  src/
+    design-system/
+      tokens/
+        README.md
+        tokens.schema.md
+        colors.ts
+        spacing.ts
+        typography.ts
+        radii.ts
+        shadows.ts
+      primitives/
+        Button/
+          Button.tsx
+          Button.css
+          Button.stories.tsx
+          Button.test.tsx
+        Input/
+          Input.tsx
+          Input.stories.tsx
+          Input.test.tsx
+        Card/
+          Card.tsx
+          Card.stories.tsx
+        Badge/
+          Badge.tsx
+          Badge.stories.tsx
+        Icon/
+          index.ts
+        Spinner/
+          Spinner.tsx
+      components/
+        ChoiceButton/
+          ChoiceButton.tsx
+          ChoiceButton.stories.tsx
+          ChoiceButton.test.tsx
+        QuizTopBar/
+          QuizTopBar.tsx
+          QuizTopBar.stories.tsx
+        TopicBadge/
+          TopicBadge.tsx
+      styles/
+        tokens.ts
+        index.css
+      hooks/
+        useTheme.tsx
+      utils/
+        aria.ts
+        helpers.ts
+      index.ts
+      README.md
+    components/  (mantener para layout y wrappers)
+    features/    (mantener, consumir DS)
+  .storybook/
+    main.ts
+    preview.tsx
+    manager.ts
+  package.json (scripts añadidos: storybook, build-storybook)
+  vitest.config.ts
+  tailwind.config.ts
+  src/styles/tokens.ts  (alias o export runtime)
+
+Archivos mínimos a generar inmediatamente
+
+- src/styles/tokens.ts (export objeto con colores/escala espaciado/typography/radii/shadows)
+- src/design-system/index.ts (re-export de primitives)
+- src/design-system/primitives/Button/Button.tsx (+ story + test)
+- .storybook/main.ts + .storybook/preview.tsx
+- src/design-system/README.md (reglas de contribución, naming tokens)
+
+Inconsistencias y puntos de atención detectados
+
+- Tokens solo en Tailwind: actualmente los tokens están en tailwind.config.ts pero no hay un src/styles/tokens.ts para uso en JS/TS. Riesgo de duplicación o desalineo.
+- Primitivas dispersas: existen en src/components/ui/* pero también dentro de features/* (p.e. ChoiceButton, QuizTopBar). Dificulta reutilización y provoca duplicados.
+- Falta de Storybook: no hay configuración; dificulta revisión visual y QA del Sistema de Diseño.
+- Nombres y export central faltantes: no existe index.ts público para primitives; imports inconsistentes en el proyecto.
+- Pruebas de componentes limitadas: cobertura insuficiente para primitives y ausencia de snapshots/story tests y pruebas de accesibilidad.
+- Componentes con lógica mezclada: algunos componentes UI incluyen lógica de negocio (estado de quiz). Deberían ser presentacionales y recibir callbacks.
+- Accesibilidad parcial: falta de roles/aria en botones compuestos (ChoiceButton) — incluir pruebas a11y en stories.
+- Design tokens incompletos: faltan tokens semánticos (p.e. color-primary, surface-card, text-heading) — actualmente hay utilitarios pero no semánticos uniformes.
+- Nombres inconsistentes: mezcla `ui`, `components`, `features` y `lib` para elementos de UI; conviene una convención clara.
+- No dist build: no hay proceso claro para empaquetar el Sistema de Diseño; si se quiere publicar, preparar build (tsc/rollup).
+
+Plan de acción recomendado (prioridades y tiempos estimados)
+
+1) Paso 1 — Export tokens runtime (alto, 1–2h)
+   - Crear `src/styles/tokens.ts` y mapear valores principales desde `tailwind.config.ts` (manual o script de sincronización).
+   - Añadir test que asegura que claves esperadas existen.
+
+2) Paso 2 — Configurar Storybook (alto, 2–4h)
+   - Añadir `.storybook`, scripts `storybook` y `build-storybook`, y una historia para `Button`.
+
+3) Paso 3 — Extraer `Button` como primitive (alto, 2–4h)
+   - Implementar `Button` en `design-system/primitives/Button`, story + tests + docs. Reemplazar imports en 1-2 lugares como prueba.
+
+4) Paso 4 — Centralizar primitives básicas (medio, 1–2 días)
+   - `Input`, `Card`, `Badge`, `Spinner`, `Icon`. Añadir stories/tests.
+
+5) Paso 5 — Migrar componentes consumidos por quiz (medio, 1 día)
+   - Extraer `ChoiceButton`, `QuizTopBar`, `TopicBadge` y actualizar `features/quiz` para consumir DS. Verificar invariantes de `useQuiz`.
+
+6) Paso 6 — Establecer normas de tokens y naming (medio, 4–6h)
+   - Definir `tokens.schema.md`, naming semántico y guía de uso. Añadir checks en PRs (linter o script simple).
+
+7) Paso 7 — Tests, a11y y QA visual (medio, 1–2 días)
+   - Añadir pruebas de accesibilidad (axe) en stories, snapshots y visual review.
+
+8) Paso 8 — Opcional: empaquetado (monorepo/package) (low, 1–2 días)
+   - Preparar build con `tsc` o `rollup` para publicar o consumir como paquete local.
+
+Notas prácticas / recomendaciones rápidas
+
+- Sincronización de tokens: preferir un único origen legible (`src/styles/tokens.ts`) y generar `tailwind.config.ts` desde él (o viceversa) con un script `scripts/sync-tokens.js`.
+- Mantener `features/*` como consumidores: UI presentacional en DS, lógica en hooks/features.
+- Adoptar nombres semánticos para tokens (`brand-primary`, `surface-card`, `text-muted`) además de la escala atómica (`space-4`, `radius-2`).
+- Empezar por una pieza pequeña y crítica (p.e. `Button`) y validar el flujo (storybook → tests → migración de 1-2 usages).
+- Añadir CI job que build-ea Storybook y corre tests de componentes para prevenir regresiones visuales.
+
+Siguiente paso sugerido
+
+- Indica si quieres que empiece con:
+  A) Generar `src/styles/tokens.ts` + script de sincronización (Paso 1), o
+  B) Configurar Storybook y una historia mínima para `Button` (Paso 2).
+
+
+Generado automáticamente por el asistente el 2026-02-05.
+
+```
