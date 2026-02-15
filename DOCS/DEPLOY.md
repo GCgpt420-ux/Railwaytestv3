@@ -1,52 +1,69 @@
 # Deploy: convertir el proyecto en un link (MVP)
 
-Este documento describe un camino simple y realista para publicar el MVP:
-- Frontend (Next.js) en Vercel
-- Backend (FastAPI) en Railway/Render/Fly
-- Postgres en Neon/Supabase/Render
+Este documento describe el camino para publicar el MVP con configuración separada:
+- **Frontend (Next.js)** en Vercel
+- **Backend (FastAPI)** en Railway
+- **Database (Postgres)** en Railway o Neon
 
-No es el único camino, pero es el más rápido con buen DX.
+---
+
+## Arquitectura de Deploy
+
+```
+GitHub (Railwaytestv3) 
+├── backend/ → Railway (FastAPI + Postgres)
+└── front-end/tutor-ia-paes/ → Vercel (Next.js)
+```
 
 ---
 
 ## 0) Pre-requisitos
 
-- Repositorio en GitHub (o GitLab)
-- Variables de entorno separadas para Front y Back
-- Base de datos Postgres accesible desde Internet
+- Repositorio en GitHub: https://github.com/GCgpt420-ux/Railwaytestv3
+- Acceso a Railway (https://railway.app)
+- Acceso a Vercel (https://vercel.com)
+- Variables de entorno separadas para cada servicio
 
 ---
 
-## 1) Backend (FastAPI)
+## 1) Backend en Railway (FastAPI + Python)
 
-### Opción 0 (rápida): Railway (Python)
+### Configuración automática con `railway.json`
 
-Railway suele entregar `DATABASE_URL` como `postgresql://...` (o `postgres://...`).
-Este repo normaliza automáticamente esa URL a `postgresql+psycopg://...` para SQLAlchemy.
+El proyecto ahora incluye configuración en:
+- `/railway.json` (raíz del repo) - especifica el contexto del backend
+- `/backend/railway.json` - usa Dockerfile para build
+- `/backend/Dockerfile` - construcción del contenedor
 
-1) Sube el repo a GitHub.
-2) En Railway:
-  - New Project → Deploy from GitHub Repo
-  - Root directory: `backend/` (o configura el servicio para apuntar a esa carpeta)
-  - Nota: este repo incluye `backend/railway.json` (config-as-code) con el `startCommand` y healthcheck.
-    Para que Railway lo use, el servicio debe apuntar a `backend/` como Root Directory.
-3) Variables de entorno mínimas:
-  - `DATABASE_URL` (la de Railway Postgres o Neon)
-  - `SECRET_KEY` (openssl rand -hex 32)
-  - `CORS_ORIGINS` (incluye el dominio de Vercel, separado por comas)
-  - `AUTO_CREATE_TABLES=false`
-4) Start command:
-  - `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-5) Migraciones:
-  - Corre `alembic upgrade head` apuntando a la DB remota (one-off) antes de usar el MVP.
+### Pasos de deploy:
 
-#### Si falla el build con "Error creating build plan with Railpack"
+1. **Crear servicio en Railway:**
+   - Ve a https://railway.app
+   - `+ New Project` → `Deploy from GitHub`
+   - Conecta el repo `Railwaytestv3`
+   - Railway detectará automáticamente el `Dockerfile` en `backend/`
 
-Eso suele pasar cuando Railway intenta construir desde la raíz del repo (monorepo) y no encuentra un proyecto Python.
+2. **Configurar base de datos:**
+   - En Railway, agrega un servicio `PostgreSQL`
+   - Railway automáticamente expone `DATABASE_URL` como variable de entorno
 
-Soluciones:
-- En el servicio de Railway, configura **Root Directory = `backend/`**.
-- Alternativa: usa el `Dockerfile` dentro de `backend/` (Railway puede construir vía Dockerfile si lo detecta en el root del servicio).
+3. **Variables de entorno en Railway:**
+   ```
+   DATABASE_URL=postgresql+psycopg://user:pass@host:5432/db
+   SECRET_KEY=<generar con: openssl rand -hex 32>
+   CORS_ORIGINS=https://tutor-ia-paes-*.vercel.app
+   LOG_LEVEL=INFO
+   AUTO_CREATE_TABLES=false
+   ```
+
+4. **Primera ejecución:**
+   - Las migraciones corren automáticamente en el startup (ver `Dockerfile` CMD)
+   - El Dockerfile ejecuta: `alembic upgrade head && uvicorn app.main:app ...`
+
+5. **Health check:**
+   - Railway usará `/api/v1/health/` para verificar que el servicio está listo
+
+### Solución de problemas en Railway
 
 ### Opción A: Render (Python Web Service)
 

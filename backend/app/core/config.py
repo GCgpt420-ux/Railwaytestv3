@@ -46,6 +46,8 @@ class Settings(BaseSettings):
         "http://localhost:3001",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
+        # Vercel Preview Deployments (will be set via environment variable)
+        # Add your production Vercel domain here
     ]
     CORS_CREDENTIALS: bool = True
     CORS_METHODS: List[str] = ["*"]

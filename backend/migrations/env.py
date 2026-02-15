@@ -6,7 +6,12 @@ from sqlalchemy import pool
 
 from alembic import context
 import os
+import sys
 from dotenv import load_dotenv
+
+# Ensure app module can be imported
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from app.db.base import Base # creado por gabriel
 from app.db import models # creado por gabriel
 from app.core.config import settings # creado por gabriel
@@ -15,8 +20,11 @@ target_metadata = Base.metadata
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file (optional for prod)
+try:
+    load_dotenv()
+except Exception:
+    pass  # .env may not exist in production
 
 # esto se cambio - usar settings.DATABASE_URL porque se ocupaba una url hardcodeada
 
